@@ -2,7 +2,7 @@ import smtplib
 import requests
 from email.message import EmailMessage
 import os
-from dotenv import load_dotenv  # <-- NEW IMPORT
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from premailer import transform
 
@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# --- API KEYS ---
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 
@@ -21,13 +21,12 @@ def get_rotten_tomatoes_scores(imdb_id):
         return None
     
     try:
-        # Use HTTPS for security
         omdb_url = f"https://www.omdbapi.com/?i={imdb_id}&apikey={OMDB_API_KEY}"
         print(f"[RT DEBUG] Fetching scores for IMDb ID: {imdb_id}")
-        print(f"[RT DEBUG] OMDb URL: {omdb_url.split('&apikey=')[0]}&apikey=...") # Hide key in log
+        print(f"[RT DEBUG] OMDb URL: {omdb_url.split('&apikey=')[0]}&apikey=...")
         
         response = requests.get(omdb_url)
-        response.raise_for_status() # Will raise an exception for HTTP errors
+        response.raise_for_status()
         data = response.json()
         
         print(f"[RT DEBUG] OMDb Response: {data}")
@@ -35,7 +34,7 @@ def get_rotten_tomatoes_scores(imdb_id):
         if data.get("Response") == "True":
             for rating in data.get("Ratings", []):
                 if rating["Source"] == "Rotten Tomatoes":
-                    return rating["Value"] # Return the score, e.g., "91%"
+                    return rating["Value"]
     except requests.RequestException as e:
         print(f"[RT DEBUG] OMDb request failed: {e}")
     except Exception as e:
@@ -44,8 +43,6 @@ def get_rotten_tomatoes_scores(imdb_id):
 
 def generate_newsletter_html(data):
     """Generates the final newsletter HTML using a table-based layout for email client compatibility."""
-    # --- FIX IS ON THE NEXT LINE ---
-    # Changed .replace(' ', '<br>') back to .replace('\n', '<br>')
     intro_html = f"<p style='font-size: 16px; line-height: 1.6;'>{data.get('introText', '').replace('\n', '<br>')}</p>"
     
     new_items_html = ""
@@ -57,8 +54,6 @@ def generate_newsletter_html(data):
     featured_items_html = ""
     if data.get("featuredItems"):
         featured_intro = data.get('featuredIntroText', 'Also on the server, check out these library picks!')
-        # --- FIX IS ON THE NEXT LINE ---
-        # Changed .replace(' ', '<br>') back to .replace('\n', '<br>')
         processed_featured_intro = featured_intro.replace('\n', '<br>')
         featured_items_html = f"<h2 style='color: #343a40; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-top: 30px;'>Featured Library Picks</h2><p>{processed_featured_intro}</p>"
         for item in data["featuredItems"]:
@@ -192,15 +187,8 @@ def generate():
             "featuredItems": enriched_featured,
         }
         
-        # This is the original HTML with the <style> block
         original_html = generate_newsletter_html(final_data)
-        
-        # --- NEW LINE ---
-        # Use premailer to transform the HTML, moving all CSS inline
         email_ready_html = transform(original_html)
-        
-        # --- MODIFIED LINE ---
-        # Return the new, email-ready HTML instead of the original
         return jsonify({"html": email_ready_html})
 
     except Exception as e:
@@ -217,11 +205,7 @@ def send_email():
     if not all([recipients, subject, html_content]):
         return jsonify({"error": "Missing recipients, subject, or HTML content"}), 400
 
-    # --- Your Credentials ---
-    # It's best practice to store these as environment variables, not directly in code.
-    # To set them in your terminal before running:
-    # export GMAIL_USER="your_email@gmail.com"
-    # export GMAIL_PASSWORD="your_16_digit_app_password"
+
     sender_email = os.getenv("GMAIL_USER")
     sender_password = os.getenv("GMAIL_PASSWORD")
 
@@ -232,13 +216,13 @@ def send_email():
         msg = EmailMessage()
         msg['Subject'] = subject
         msg['From'] = sender_email
-        msg['To'] = recipients # Can be a comma-separated string of emails
+        msg['To'] = recipients
 
-        # Set the content as HTML
+
         msg.set_content("This is a fallback for email clients that do not support HTML.")
         msg.add_alternative(html_content, subtype='html')
 
-        # Connect to Gmail's SMTP server and send the email
+
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
