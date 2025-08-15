@@ -13,6 +13,7 @@ app = Flask(__name__)
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
+PLEX_OWNER_NAME = os.getenv("PLEX_OWNER_NAME", "Plex")
 
 def get_rotten_tomatoes_scores(imdb_id):
     """Fetches movie ratings from OMDb and prints debug info."""
@@ -43,7 +44,8 @@ def get_rotten_tomatoes_scores(imdb_id):
 
 def generate_newsletter_html(data):
     """Generates the final newsletter HTML using a table-based layout for email client compatibility."""
-    intro_html = f"<p style='font-size: 16px; line-height: 1.6;'>{data.get('introText', '').replace('\n', '<br>')}</p>"
+    intro_text = data.get('introText', '').replace('\n', '<br>')
+    intro_html = f"<p style='font-size: 16px; line-height: 1.6;'>{intro_text}</p>"
     
     new_items_html = ""
     if data.get("newItems"):
@@ -64,7 +66,7 @@ def generate_newsletter_html(data):
     <html>
     <head><meta charset='UTF-8'></head>
     <body style='font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px; max-width: 800px; margin: auto;'>
-        <h1 style='color: #343a40;'>🎬 New on Dante’s Plex</h1>
+        <h1 style='color: #343a40;'>🎬 New on {PLEX_OWNER_NAME}'s Plex</h1>
         {intro_html}
         {new_items_html}
         {featured_items_html}
