@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plex Newsletter Generator - Alternative Design</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8f9fa; color: #212529; padding: 20px; max-width: 900px; margin: auto; }
+        h1, h2 { color: #343a40; }
+        h2 { border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-top: 30px; }
+        .box { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .search-area input { width: calc(100% - 100px); padding: 12px; font-size: 16px; border: 1px solid #ced4da; border-radius: 4px; }
+        .search-area button { width: 90px; padding: 12px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        .intro-textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 15px; margin-top: 10px; }
+        .search-results { margin-top: 20px; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
+        .media-card { text-align: center; cursor: pointer; border: 2px solid transparent; border-radius: 8px; padding: 5px; transition: all 0.2s; position: relative; }
+        .media-card:hover { border-color: #007bff; background-color: #e9f3ff; }
+        .media-card img { width: 100%; border-radius: 6px; }
+        .media-card p { margin: 5px 0 0 0; font-size: 13px; font-weight: 500; }
+        .media-type-badge { position: absolute; top: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 3px 6px; font-size: 10px; border-radius: 4px; font-weight: bold; }
+        .selected-card { display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px; }
+        .selected-card img { width: 80px; border-radius: 6px; }
+        .selected-card .info { flex: 1; }
+        .selected-card textarea { width: 100%; height: 50px; margin-top: 5px; border: 1px solid #ced4da; border-radius: 4px; padding: 5px; }
+        .selected-card button { background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; }
+        .actions { display: flex; gap: 15px; }
+        #generate-button { width:100%; padding: 15px; font-size: 18px; cursor: pointer; border: none; border-radius: 4px; color: white; }
+        #generate-button { background-color: #28a745; }
+        #export-button, #send-button { width:100%; padding: 15px; font-size: 18px; cursor: pointer; border: none; border-radius: 4px; color: white; }
+        #export-button { background-color: #17a2b8; }
+        #send-button { background-color: #ffc107; color: #212529; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ced4da; border-radius: 4px; }
+        #output-area { margin-top: 20px; }
+        #output-area textarea { width: 100%; height: 300px; font-family: monospace; }
+        #newsletter-preview { border: 1px solid #ccc; padding: 10px; min-height: 200px; background: white; margin-bottom: 20px; }
+        
+        .search-area button:hover {
+            background-color: #0056b3;
+        }
+        
+        #generate-button { 
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+        
+        #generate-button:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3);
+        }
+        
+        #export-button { 
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+        
+        #export-button:hover {
+            background: linear-gradient(135deg, #138496, #0f6674);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(23, 162, 184, 0.3);
+        }
+        
+        #send-button { 
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+        
+        #send-button:hover {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.3);
+        }
+        
+        .form-group { 
+            margin-bottom: 20px;
+        }
+        
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 600;
+            color: #3498db;
+        }
+        
+        .form-group input { 
+            width: 100%; 
+            padding: 12px 16px; 
+            font-size: 14px; 
+            border: 2px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .form-group input::placeholder {
+            color: rgba(224, 224, 224, 0.6);
+        }
+        
+        #output-area { 
+            margin-top: 25px;
+        }
+        
+        #output-area textarea { 
+            width: 100%; 
+            height: 350px; 
+            font-family: 'Fira Code', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        #newsletter-preview { 
+            border: 2px solid rgba(255, 255, 255, 0.2); 
+            padding: 20px; 
+            min-height: 250px; 
+            background: white; 
+            margin-bottom: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        /* Status messages */
+        #send-status {
+            margin-top: 15px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .search-area {
+                flex-direction: column;
+            }
+            
+            .search-results {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 15px;
+            }
+            
+            .actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 Plex Newsletter Generator</h1>
+
+    <div class="box">
+        <h2>1. Main Introduction</h2>
+        <textarea id="intro-text" class="intro-textarea" placeholder="e.g., Hey all, this week we have a movie starring Pedro Pascal, a comedy spy movie, and more!"></textarea>
+    </div>
+
+    <div class="box">
+        <h2>2. New Additions</h2>
+        <div class="search-area">
+            <input type="text" id="new-search-input" placeholder="Search for new titles...">
+            <button onclick="handleSearch('new')">Search</button>
+        </div>
+        <div id="new-search-status" style="margin-top:10px;"></div>
+        <div id="new-search-results" class="search-results"></div>
+        <h3>Selected New Items</h3>
+        <div id="new-selected-items"><p>Search and click to add new items.</p></div>
+        <div class="form-group" style="margin-top: 15px;">
+            <label for="new-longform">Editor's Note for New Items (optional):</label>
+            <textarea id="new-longform" class="intro-textarea" placeholder="Add your commentary about this week's new additions..."></textarea>
+        </div>
+    </div>
+    
+    <div class="box">
+        <h2>3. Featured Library Picks</h2>
+        <textarea id="featured-intro-text" class="intro-textarea" placeholder="e.g., This section features existing movies already on Plex that we think are worth checking out!"></textarea>
+        <div class="search-area" style="margin-top:15px;">
+            <input type="text" id="featured-search-input" placeholder="Search for featured titles...">
+            <button onclick="handleSearch('featured')">Search</button>
+        </div>
+        <div id="featured-search-status" style="margin-top:10px;"></div>
+        <div id="featured-search-results" class="search-results"></div>
+        <h3>Selected Featured Items</h3>
+        <div id="featured-selected-items"><p>Search and click to add featured items.</p></div>
+        <div class="form-group" style="margin-top: 15px;">
+            <label for="library-longform">Editor's Note for Library Picks (optional):</label>
+            <textarea id="library-longform" class="intro-textarea" placeholder="Add your commentary about this week's featured picks..."></textarea>
+        </div>
+    </div>
+    
+    <div class="box">
+        <h2>4. Generate, Send & Export</h2>
+        <div class="actions">
+            <button id="generate-button">Generate HTML</button>
+        </div>
+        
+        <div id="send-area" style="display:none; margin-top: 20px;">
+            <h3>Send Newsletter</h3>
+            <div class="form-group">
+                <label for="email-subject">Subject Line:</label>
+                <input type="text" id="email-subject" placeholder="🎬 What's New on Plex This Week!">
+            </div>
+            <div class="form-group">
+                <label for="email-recipients">Recipients (comma-separated):</label>
+                <input type="text" id="email-recipients" placeholder="friend1@example.com, friend2@example.com">
+            </div>
+            <div class="actions" style="margin-top: 15px;">
+                 <button id="send-button">Send Email</button>
+                 <button id="export-button">Export as Image</button>
+            </div>
+            <div id="send-status" style="margin-top: 10px; font-weight: bold;"></div>
+        </div>
+        
+        <div id="output-area" style="display:none; margin-top: 20px;">
+            <h3>Newsletter Preview</h3>
+            <div id="newsletter-preview"></div>
+            <h3>Raw HTML</h3>
+            <textarea id="html-output" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            new: { items: [], cache: [] },
+            featured: { items: [], cache: [] }
+        };
+
+        const handleSearch = async (section) => {
+            const input = document.getElementById(`${section}-search-input`);
+            const status = document.getElementById(`${section}-search-status`);
+            const resultsDiv = document.getElementById(`${section}-search-results`);
+            const query = input.value.trim();
+            if (!query) return;
+
+            status.textContent = 'Searching...';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`/search?query=${encodeURIComponent(query)}`);
+                const items = await response.json();
+                if (items.error) throw new Error(items.error);
+                
+                status.textContent = `Found ${items.length} results.`;
+                state[section].cache = items; // Cache results for this section
+                displaySearchResults(section, items);
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+            }
+        };
+
+        const displaySearchResults = (section, items) => {
+            const resultsDiv = document.getElementById(`${section}-search-results`);
+            resultsDiv.innerHTML = '';
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                card.innerHTML = `<div class="media-type-badge">${item.type.toUpperCase()}</div><img src="${item.poster_url}" alt="${item.title}"><p>${item.title} (${item.year})</p>`;
+                card.onclick = () => addItemToSelection(section, item.type, item.id);
+                resultsDiv.appendChild(card);
+            });
+        };
+
+        const addItemToSelection = (section, type, id) => {
+            if (state[section].items.some(item => item.id === id && item.type === type)) {
+                alert('This item has already been added to this section.');
+                return;
+            }
+            const itemToAdd = state[section].cache.find(item => item.id === id && item.type === type);
+            if (itemToAdd) {
+                state[section].items.push({ ...itemToAdd, blurb: '' });
+                renderSelectedItems(section);
+            }
+        };
+
+        const renderSelectedItems = (section) => {
+            const selectedDiv = document.getElementById(`${section}-selected-items`);
+            selectedDiv.innerHTML = '';
+            if (state[section].items.length === 0) {
+                selectedDiv.innerHTML = `<p>Search and click to add ${section} items.</p>`;
+                return;
+            }
+            state[section].items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'selected-card';
+                card.innerHTML = `<img src="${item.poster_url}" alt="${item.title}"><div class="info"><strong>${item.title} (${item.year})</strong><textarea placeholder="Write your custom blurb here..." oninput="updateBlurb('${section}', ${index}, this.value)">${item.blurb}</textarea><button onclick="removeItem('${section}', ${index})">Remove</button></div>`;
+                selectedDiv.appendChild(card);
+            });
+        };
+        
+        window.updateBlurb = (section, index, blurb) => { state[section].items[index].blurb = blurb; };
+        window.removeItem = (section, index) => {
+            state[section].items.splice(index, 1);
+            renderSelectedItems(section);
+        };
+
+        // Add keypress listener for search inputs
+        document.getElementById('new-search-input').addEventListener('keypress', (e) => e.key === 'Enter' && handleSearch('new'));
+        document.getElementById('featured-search-input').addEventListener('keypress', (e) => e.key === 'Enter' && handleSearch('featured'));
+
+        // --- GENERATE, SEND & EXPORT LOGIC ---
+        const generateButton = document.getElementById('generate-button');
+        const exportButton = document.getElementById('export-button');
+        const sendButton = document.getElementById('send-button');
+        let generatedHtml = ''; // Variable to store the generated HTML
+
+        generateButton.addEventListener('click', async () => {
+            generateButton.textContent = 'Generating...';
+            generateButton.disabled = true;
+
+            // Get featured items (first item from each section)
+            const featuredNewItem = state.new.items.length > 0 ? state.new.items[0] : null;
+            const featuredLibraryItem = state.featured.items.length > 0 ? state.featured.items[0] : null;
+
+            const payload = {
+                introText: document.getElementById('intro-text').value,
+                newItems: state.new.items,
+                featuredIntroText: document.getElementById('featured-intro-text').value,
+                featuredItems: state.featured.items,
+                featuredNewItem: featuredNewItem,
+                featuredLibraryItem: featuredLibraryItem,
+                newItemsLongform: document.getElementById('new-longform').value,
+                libraryPicksLongform: document.getElementById('library-longform').value
+            };
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.error) throw new Error(result.error);
+                
+                generatedHtml = result.html;
+                document.getElementById('newsletter-preview').innerHTML = generatedHtml;
+                document.getElementById('html-output').value = generatedHtml;
+                document.getElementById('output-area').style.display = 'block';
+                document.getElementById('send-area').style.display = 'block';
+
+            } catch (error) {
+                alert(`Failed to generate newsletter: ${error.message}`);
+            } finally {
+                generateButton.textContent = 'Generate HTML';
+                generateButton.disabled = false;
+            }
+        });
+        
+        sendButton.addEventListener('click', async () => {
+            const recipients = document.getElementById('email-recipients').value;
+            const subject = document.getElementById('email-subject').value;
+            const sendStatus = document.getElementById('send-status');
+
+            if (!recipients || !subject) {
+                sendStatus.textContent = 'Please provide a subject and at least one recipient.';
+                sendStatus.style.color = 'red';
+                return;
+            }
+
+            sendStatus.textContent = 'Sending...';
+            sendStatus.style.color = 'black';
+            sendButton.disabled = true;
+
+            try {
+                const response = await fetch('/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recipients: recipients,
+                        subject: subject,
+                        html: generatedHtml
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'An unknown error occurred.');
+                }
+                sendStatus.textContent = result.message;
+                sendStatus.style.color = 'green';
+            } catch (error) {
+                sendStatus.textContent = `Error: ${error.message}`;
+                sendStatus.style.color = 'red';
+            } finally {
+                sendButton.disabled = false;
+            }
+        });
+
+        exportButton.addEventListener('click', () => {
+            const preview = document.getElementById('newsletter-preview');
+            exportButton.textContent = "Exporting...";
+            exportButton.disabled = true;
+
+            html2canvas(preview, { 
+                useCORS: true, // Important for fetching images from TMDB
+                scale: 2 // Increase resolution for better quality
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'plex-newsletter.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                alert('Error exporting image. Check console for details.');
+                console.error(err);
+            }).finally(() => {
+                exportButton.textContent = 'Export as Image';
+                exportButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

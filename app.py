@@ -75,6 +75,169 @@ def generate_newsletter_html(data):
     """
     return full_html
 
+def generate_magazine_newsletter_html(data):
+    """Generates a magazine-style newsletter HTML with featured items prominently displayed."""
+    intro_text = data.get('introText', '').replace('\n', '<br>')
+    intro_html = f"<p style='font-size: 16px; line-height: 1.6; margin-bottom: 30px;'>{intro_text}</p>"
+    
+    # Magazine header
+    header_html = f"""
+    <div style='text-align: center; margin-bottom: 40px; border-bottom: 3px solid #e74c3c; padding-bottom: 20px;'>
+        <h1 style='font-size: 36px; font-weight: bold; color: #2c3e50; margin: 0; letter-spacing: 2px;'>MONTHLY NEWSLETTER</h1>
+        <p style='font-size: 14px; color: #7f8c8d; margin: 5px 0 0 0;'>{PLEX_OWNER_NAME}'s Plex Server</p>
+    </div>
+    """
+    
+    # New This Week section
+    new_section_html = ""
+    if data.get("featuredNewItem") or data.get("newItems"):
+        # Exclude the featured item from additional items
+        new_additional_items = data.get("newItems", [])[1:] if data.get("newItems") else []
+        new_section_html = render_magazine_section(
+            title="NEW THIS WEEK",
+            featured_item=data.get("featuredNewItem"),
+            additional_items=new_additional_items,
+            longform_content=data.get("newItemsLongform", "")
+        )
+    
+    # Featured Library Picks section
+    featured_section_html = ""
+    if data.get("featuredLibraryItem") or data.get("featuredItems"):
+        # Exclude the featured item from additional items
+        featured_additional_items = data.get("featuredItems", [])[1:] if data.get("featuredItems") else []
+        featured_section_html = render_magazine_section(
+            title="PLEX PICKS - THIS WEEK'S FEATURE",
+            featured_item=data.get("featuredLibraryItem"),
+            additional_items=featured_additional_items,
+            longform_content=data.get("libraryPicksLongform", "")
+        )
+    
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset='UTF-8'></head>
+    <body style='font-family: Georgia, serif; background-color: #f8f9fa; padding: 20px; max-width: 900px; margin: auto;'>
+        {header_html}
+        {intro_html}
+        {new_section_html}
+        {featured_section_html}
+    </body>
+    </html>
+    """
+    return full_html
+
+def render_magazine_section(title, featured_item, additional_items, longform_content):
+    """Renders a magazine-style section with featured item on left and small cards on right."""
+    print(f"[DEBUG] render_magazine_section - title: {title}, longform_content: '{longform_content}'")
+    section_html = f"""
+    <div style='margin-bottom: 50px;'>
+        <h2 style='font-size: 24px; font-weight: bold; color: #2c3e50; text-align: center; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;'>{title}</h2>
+        <table cellpadding='0' cellspacing='0' border='0' width='100%'>
+            <tr>
+                <td width='60%' valign='top' style='padding-right: 20px;'>
+    """
+    
+    # Featured item on the left
+    if featured_item:
+        section_html += render_featured_item(featured_item, longform_content)
+    else:
+        section_html += "<div style='background: #ecf0f1; padding: 40px; text-align: center; border-radius: 10px; color: #7f8c8d;'>No featured item selected</div>"
+    
+    section_html += """
+                </td>
+                <td width='40%' valign='top'>
+    """
+    
+    # Small cards on the right
+    if additional_items:
+        section_html += "<div style='background: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>"
+        section_html += "<h3 style='font-size: 16px; color: #2c3e50; margin: 0 0 15px 0; text-align: center;'>Also This Week</h3>"
+        for item in additional_items:
+            section_html += render_small_card(item)
+        section_html += "</div>"
+    else:
+        section_html += "<div style='background: #ecf0f1; padding: 20px; text-align: center; border-radius: 10px; color: #7f8c8d;'>No additional items</div>"
+    
+    section_html += """
+                </td>
+            </tr>
+        </table>
+    </div>
+    """
+    
+    return section_html
+
+def render_featured_item(item, longform_content=""):
+    """Renders a large featured item for the magazine layout."""
+    print(f"[DEBUG] render_featured_item - item: {item['title'] if item else 'None'}, longform_content: '{longform_content}'")
+    rt_block = ""
+    if item.get("rt_critic_score"):
+        rt_block = f"<div style='color: #e74c3c;'>🍅 {item['rt_critic_score']}</div>"
+    
+    # Handle custom blurb (user-entered blurb) with italic grey styling
+    custom_blurb_html = ""
+    if item.get('blurb'):
+        custom_blurb_html = f"<div style='font-size: 15px; color: #7f8c8d; line-height: 1.6; font-style: italic; margin-top: 15px;'>\"{item['blurb']}\"</div>"
+    
+    # Use longform content as the Editor's Note with black text
+    blurb_html = ""
+    if longform_content:
+        processed_longform = longform_content.replace('\n', '<br>')
+        blurb_html = f"<div style='margin-top: 20px; clear: both;'><h4 style='font-size: 16px; font-weight: bold; color: #2c3e50; margin: 0 0 10px 0; border-bottom: 1px solid #ecf0f1; padding-bottom: 5px;'>Editor's Note</h4><div style='font-size: 15px; color: #000000; line-height: 1.6;'>{processed_longform}</div></div>"
+        print(f"[DEBUG] blurb_html generated: {blurb_html[:100]}...")
+    
+    return f"""
+    <div style='background: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 25px;'>
+        <div style='overflow: hidden;'>
+            <img src="{item['poster_url']}" alt="{item['title']} poster" style="width: 200px; height: 300px; object-fit: cover; float: left; margin: 0 25px 15px 0; border-radius: 8px;">
+            
+            <h3 style='font-size: 24px; font-weight: bold; margin: 0 0 8px 0; color: #2c3e50;'>{item['title']}</h3>
+            <p style='font-size: 16px; color: #7f8c8d; margin: 0 0 15px 0;'>{item['year']} • {item.get('type', 'Movie')}</p>
+            
+            <div style='margin-bottom: 15px;'>
+                <div style='margin-bottom: 5px;'>
+                    <span style='font-size: 18px; font-weight: bold; color: #f39c12;'>⭐ {item['rating']}/10</span>
+                    <span style='font-size: 14px; color: #95a5a6; margin-left: 10px;'>({item['votes']:,} votes)</span>
+                </div>
+                {rt_block if item.get('rt_critic_score') else ''}
+            </div>
+            
+            <p style='font-size: 14px; color: #7f8c8d; margin: 0 0 15px 0; font-weight: 500;'>{item['genres']}</p>
+            
+            <div style='font-size: 15px; color: #2c3e50; line-height: 1.6;'>{item['overview']}</div>
+            
+            {custom_blurb_html}
+            
+            {blurb_html}
+        </div>
+    </div>
+    """
+
+def render_small_card(item):
+    """Renders a small card for additional items in the magazine layout."""
+    rt_block = ""
+    if item.get("rt_critic_score"):
+        rt_block = f" • 🍅 {item['rt_critic_score']}"
+    
+    custom_blurb = ""
+    if item.get('blurb'):
+        custom_blurb = f"<p style='font-size: 11px; color: #2c3e50; line-height: 1.3; margin: 4px 0 0 0; font-style: italic;'>\"{item['blurb']}\"</p>"
+    
+    return f"""
+    <div style='display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ecf0f1;'>
+        <div style='flex-shrink: 0; margin-right: 12px;'>
+            <img src="{item['poster_url']}" alt="{item['title']} poster" width="60" style="width: 60px; height: 90px; object-fit: cover; border-radius: 5px; display: block;">
+        </div>
+        <div style='flex: 1; min-width: 0;'>
+            <h4 style='font-size: 14px; font-weight: bold; margin: 0 0 4px 0; color: #2c3e50; line-height: 1.3;'>{item['title']}</h4>
+            <p style='font-size: 12px; color: #7f8c8d; margin: 0 0 6px 0;'>{item['year']} • {item.get('type', 'Movie')}</p>
+            <div style='font-size: 12px; color: #f39c12; margin-bottom: 4px;'>⭐ {item['rating']}/10{rt_block}</div>
+            <p style='font-size: 11px; color: #95a5a6; line-height: 1.3; margin: 0;'>{item['genres']}</p>
+            {custom_blurb}
+        </div>
+    </div>
+    """
+
 def render_item_card(item):
     """Helper function to render a single movie/show card HTML using a table layout."""
     rt_block = ""
@@ -173,28 +336,81 @@ def enrich_item(item):
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    """API endpoint to generate the newsletter, now handling complex data."""
+    """API endpoint to generate the newsletter, now handling both classic and magazine layouts."""
     data = request.json
     try:
-        enriched_new = [enrich_item(item) for item in data.get("newItems", [])]
-        enriched_featured = [enrich_item(item) for item in data.get("featuredItems", [])]
+        print(f"[DEBUG] Received data keys: {list(data.keys())}")
         
-        enriched_new = [i for i in enriched_new if i]
-        enriched_featured = [i for i in enriched_featured if i]
+        # Check if this is a magazine-style request (from alt interface)
+        is_magazine_style = (
+            data.get("featuredNewItem") is not None or 
+            data.get("featuredLibraryItem") is not None or
+            data.get("newItemsLongform") is not None or
+            data.get("libraryPicksLongform") is not None
+        )
+        
+        print(f"[DEBUG] Magazine style detected: {is_magazine_style}")
+        
+        if is_magazine_style:
+            # Handle magazine-style layout
+            enriched_new = [enrich_item(item) for item in data.get("newItems", [])]
+            enriched_featured = [enrich_item(item) for item in data.get("featuredItems", [])]
+            
+            # Enrich featured items
+            enriched_featured_new = None
+            if data.get("featuredNewItem"):
+                enriched_featured_new = enrich_item(data["featuredNewItem"])
+                print(f"[DEBUG] Enriched featured new item: {enriched_featured_new['title'] if enriched_featured_new else 'None'}")
+            
+            enriched_featured_library = None
+            if data.get("featuredLibraryItem"):
+                enriched_featured_library = enrich_item(data["featuredLibraryItem"])
+                print(f"[DEBUG] Enriched featured library item: {enriched_featured_library['title'] if enriched_featured_library else 'None'}")
+            
+            enriched_new = [i for i in enriched_new if i]
+            enriched_featured = [i for i in enriched_featured if i]
+            
+            final_data = {
+                "introText": data.get("introText"),
+                "featuredNewItem": enriched_featured_new,
+                "newItems": enriched_new,
+                "newItemsLongform": data.get("newItemsLongform", ""),
+                "featuredLibraryItem": enriched_featured_library,
+                "featuredItems": enriched_featured,
+                "libraryPicksLongform": data.get("libraryPicksLongform", "")
+            }
+            
+            print(f"[DEBUG] newItemsLongform: '{data.get('newItemsLongform', '')}'")
+            print(f"[DEBUG] libraryPicksLongform: '{data.get('libraryPicksLongform', '')}'")
+            
+            print(f"[DEBUG] Generating magazine-style newsletter")
+            original_html = generate_magazine_newsletter_html(final_data)
+        else:
+            # Handle classic layout
+            enriched_new = [enrich_item(item) for item in data.get("newItems", [])]
+            enriched_featured = [enrich_item(item) for item in data.get("featuredItems", [])]
+            
+            enriched_new = [i for i in enriched_new if i]
+            enriched_featured = [i for i in enriched_featured if i]
 
-        final_data = {
-            "introText": data.get("introText"),
-            "newItems": enriched_new,
-            "featuredIntroText": data.get("featuredIntroText"),
-            "featuredItems": enriched_featured,
-        }
+            final_data = {
+                "introText": data.get("introText"),
+                "newItems": enriched_new,
+                "featuredIntroText": data.get("featuredIntroText"),
+                "featuredItems": enriched_featured,
+            }
+            
+            print(f"[DEBUG] Generating classic newsletter")
+            original_html = generate_newsletter_html(final_data)
         
-        original_html = generate_newsletter_html(final_data)
         email_ready_html = transform(original_html)
+        print(f"[DEBUG] Newsletter generated successfully")
         return jsonify({"html": email_ready_html})
 
     except Exception as e:
         print(f"[ERROR] Failed to generate HTML: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Failed to generate HTML: {e}"}), 500
 
 @app.route("/send-email", methods=["POST"])
@@ -238,6 +454,10 @@ def send_email():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/alt")
+def index_alt():
+    return render_template("index-alt.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
